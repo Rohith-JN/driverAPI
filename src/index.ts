@@ -4,22 +4,28 @@ import http from 'http';
 import axios from 'axios';
 import cors from 'cors';
 import decodePolyline from './decodePolyline';
-
+import { latLngToCell } from 'h3-js';
 const endpoint = 'http://localhost:4000/graphql';
 
-async function updateDriverLocation(uid: string, location: string) {
+async function updateDriverLocation(
+  uid: string,
+  location: string,
+  H3Location: string
+) {
   const updateDriverMutation = `
-    mutation updateDriverLocation($uid: String!, $location: String!) {
-      updateDriverLocation(location: $location,uid: $uid) {
-      uid
-      location
-    }
+    mutation updateDriverLocation($uid: String!, $location: String!, $H3Location: String!) {
+      updateDriverLocation(location: $location,H3Location: $H3Location, uid: $uid) {
+        uid
+        location
+        H3Location
+      }
 }
   `;
 
   const variables = {
     uid: uid,
     location: location,
+    H3Location: H3Location,
   };
 
   try {
@@ -31,9 +37,8 @@ async function updateDriverLocation(uid: string, location: string) {
       },
       { headers: { 'Content-Type': 'application/json' } }
     );
-    console.log('Driver location updated');
   } catch (err) {
-    console.log('Error updating driver location: ', err);
+    console.log(`Error updating driver ${uid} location: `, err);
   }
 }
 
@@ -73,11 +78,12 @@ function simulateDriverMovement(uid: string) {
     if (currentLocationIndex < polylinePoints.length) {
       const currentLocation = polylinePoints[currentLocationIndex];
       console.log(
-        `Driver is at: ${currentLocation.lat}, ${currentLocation.lng}`
+        `Driver ${uid} is at: ${currentLocation.lat}, ${currentLocation.lng}`
       );
       updateDriverLocation(
         uid,
-        `[${currentLocation.lat}, ${currentLocation.lng}]`
+        `[${currentLocation.lng}, ${currentLocation.lat}]`,
+        latLngToCell(currentLocation.lat, currentLocation.lng, 9)
       );
       currentLocationIndex++;
     } else {
